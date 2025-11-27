@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather App 🌦️</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
+    body {
+      background: linear-gradient(to right, #3a7bd5, #3a6073);
+      color: white;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .weather-container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      width: 320px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .input-section {
+      margin: 20px 0;
+    }
+
+    input {
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+      width: 65%;
+    }
+
+button {
+  padding: 6px 8px;  /* smaller height & width */
+  margin-left: 6px;
+  font-size: 13px;   /* optional: makes text smaller */
+  border: none;
+  background-color: #00c6ff;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+
+    button:hover {
+      background-color: #0072ff;
+    }
+
+    .result {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    .temp {
+      font-size: 40px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="weather-container">
+    <h1>🌦️ Weather App</h1>
+    <div class="input-section">
+      <input type="text" id="cityInput" placeholder="Enter city name...">
+      <button id="getWeather">Get Weather</button>
+    </div>
+
+    <div class="result" id="result">
+      <!-- Weather info will appear here -->
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("getWeather").addEventListener("click", getWeather);
+
+    function getWeather() {
+      const city = document.getElementById("cityInput").value.trim();
+      const resultDiv = document.getElementById("result");
+
+      if (!city) {
+        resultDiv.innerHTML = "<p>Please enter a city name.</p>";
+        return;
+      }
+
+      const apiKey = "e28df515aa044ae59f7154956250309";
+      const url = `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=yes`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            resultDiv.innerHTML = `<p>❌ ${data.error.message}</p>`;
+          } else {
+            const location = data.location.name + ", " + data.location.country;
+            const tempC = data.current.temp_c;
+            const condition = data.current.condition.text;
+            const icon = data.current.condition.icon;
+
+            resultDiv.innerHTML = `
+              <h2>${location}</h2>
+              <img src="https:${icon}" alt="Weather icon">
+              <div class="temp">${tempC}°C</div>
+              <p>${condition}</p>
+            `;
+          }
+        })
+        .catch(error => {
+          resultDiv.innerHTML = "<p>⚠️ Unable to fetch weather data. Try again later.</p>";
+          console.error("Error:", error);
+        });
+    }
+  </script>
+</body>
+</html>
