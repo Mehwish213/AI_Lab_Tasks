@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Pink AI Stock Predictor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    :root{
+      --pink-1:#fff0f6;
+      --pink-2:#ffd6e8;
+      --accent:#d63384;
+      --muted:#6c5b6e;
+    }
+    body {
+      background: linear-gradient(135deg,var(--pink-1), #fff5fb);
+      color: #2b1432;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      padding-top: 36px;
+    }
+    .card {
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      border: none;
+    }
+    .app-title {
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .form-label { color: #4b2640; font-weight:600; }
+    .submit-btn {
+      background: linear-gradient(90deg,#ff80bf,#ff4da6);
+      border: none;
+    }
+    .result-bubble {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid #ffd7ec;
+      font-weight:700;
+      color: #3b0230;
+    }
+    .small-muted { color: #7a5266; font-size:0.9rem; }
+    @media (min-width: 992px) {
+      .center-col { max-width: 900px; margin: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container center-col">
+    <div class="card p-4 mb-4">
+      <div class="d-flex align-items-center mb-3 gap-3">
+        <div style="width:64px;height:64px;border-radius:12px;background:linear-gradient(180deg,#ffd6e8,#ffecf5);display:flex;align-items:center;justify-content:center;font-size:28px">💗</div>
+        <div>
+          <h2 class="app-title mb-0">AI Stock Predictor</h2>
+          <div class="small-muted">Enter today's stock inputs and get predicted close price</div>
+        </div>
+      </div>
+
+      <form id="predictForm" onsubmit="return false;">
+        <div class="row g-3">
+          <!-- Numeric fields (textboxes) -->
+          {% for field in numeric_fields %}
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="{{field}}">{{ field|capitalize }}</label>
+            <input type="number" step="any" class="form-control" id="{{field}}" name="{{field}}" required />
+          </div>
+          {% endfor %}
+
+          <!-- Dropdowns -->
+          {% for col, options in dropdown_options.items() %}
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="{{col}}">{{ col|replace('_',' ')|capitalize }}</label>
+            <select id="{{col}}" name="{{col}}" class="form-select">
+              {% for opt in options %}
+                <option value="{{opt}}">{{opt}}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+          <div class="small-muted">Model expects features: open, high, low, volume, year, month, day, day_of_week</div>
+          <div>
+            <button id="predictBtn" class="btn submit-btn text-white px-4 py-2" type="submit">Predict</button>
+            <button id="clearBtn" class="btn btn-outline-secondary ms-2">Clear</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="card p-4">
+      <h5 class="mb-3">Prediction</h5>
+      <div id="resultArea">
+        <div class="small-muted">No prediction yet. Fill inputs and click <strong>Predict</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Async structured command to call /predict (used by the UI)
+    async function callPredict(payload) {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    }
+
+    document.getElementById('predictBtn').addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      // Gather data in correct order expected by model
+      const payload = {
+        open: document.getElementById('open').value,
+        high: document.getElementById('high').value,
+        low: document.getElementById('low').value,
+        volume: document.getElementById('volume').value,
+        year: document.getElementById('year').value,
+        month: document.getElementById('month').value,
+        day: document.getElementById('day').value,
+        day_of_week: document.getElementById('day_of_week').value
+      };
+
+      // basic client-side validation
+      for (const [k,v] of Object.entries(payload)) {
+        if (v === null || v === undefined || v === "") {
+          alert("Please fill: " + k);
+          return;
+        }
+      }
+
+      // show loading UI
+      const resultArea = document.getElementById('resultArea');
+      resultArea.innerHTML = '<div class="result-bubble">Predicting... ⏳</div>';
+
+      try {
+        const json = await callPredict(payload);
+        if (json.error) {
+          resultArea.innerHTML = `<div class="result-bubble">⚠ Error: ${json.error}</div>`;
+        } else {
+          resultArea.innerHTML = `<div class="result-bubble">Predicted Close Price: <span style="color:${json.predicted_close >= 0 ? '#b30059' : '#333'}">${json.predicted_close}</span></div>`;
+        }
+      } catch (err) {
+        resultArea.innerHTML = `<div class="result-bubble">⚠ Network error: ${err}</div>`;
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', (e)=>{
+      e.preventDefault();
+      ['open','high','low','volume'].forEach(id => { document.getElementById(id).value = ''; });
+    });
+
+    // Example of the structured async command you can reuse elsewhere:
+    /*
+    async function exampleCall() {
+      const payload = {
+        open: 262, high: 267, low: 250, volume: 11896100,
+        year: 2018, month: 2, day: 5, day_of_week: 0
+      };
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      console.log(await res.json());
+    }
+    */
+  </script>
+</body>
+</html>
